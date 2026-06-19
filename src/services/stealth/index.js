@@ -3,22 +3,29 @@ import { StealthScheduler } from "./scheduler.js";
 import { MultiAccount } from "./multiaccount.js";
 import { StealthContent } from "./content.js";
 import { getRandomUserAgent } from "./agent.js";
+import { isStealthEnabled, setStealthEnabled } from "./runtime.js";
 
 const cfg = (obj, key, fallback) => (obj && obj[key] !== undefined ? obj[key] : fallback);
 
 export class Stealth {
   constructor(opts = {}, accountIndex = 0) {
+    const runtimeOn = isStealthEnabled();
     this.behavior = new StealthBehavior(opts);
     this.scheduler = new StealthScheduler(opts);
     this.multi = new MultiAccount(accountIndex);
     this.content = new StealthContent(cfg(opts, "variacao", {}));
+    if (runtimeOn) {
+      this.behavior.enabled = true;
+      this.scheduler.enabled = true;
+    }
   }
 
   get enabled() {
-    return this.behavior.enabled;
+    return isStealthEnabled();
   }
 
   set enabled(v) {
+    setStealthEnabled(v);
     this.behavior.enabled = v;
     this.scheduler.enabled = v;
   }

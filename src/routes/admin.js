@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getStealthConfig, setStealthEnabled } from "../services/stealth/runtime.js";
 
 export function createAdminRouter(whatsapp) {
   const router = Router();
@@ -61,6 +62,18 @@ export function createAdminRouter(whatsapp) {
   router.get("/api/admin/stats", (_req, res) => {
     const stats = storage?.getMessageStats() || {};
     res.json({ success: true, stats });
+  });
+
+  // ---- Stealth (anti-ban) ----
+
+  router.get("/api/admin/stealth", (_req, res) => {
+    res.json({ success: true, config: getStealthConfig() });
+  });
+
+  router.post("/api/admin/stealth", (req, res) => {
+    const enabled = req.body?.enabled === true;
+    setStealthEnabled(enabled);
+    res.json({ success: true, enabled });
   });
 
   // ---- Admin HTML ----
@@ -231,6 +244,10 @@ tr:hover td{background:rgba(59,130,246,.04)}
       <span class="status-dot status-dot--starting" id="topStatusDot"></span>
       <h1 id="topStatusText">Carregando...</h1>
       <span class="uptime" id="topUptime"></span>
+      <span class="stealth-toggle" id="stealthToggle" style="margin-left:auto;cursor:pointer;font-size:.72rem;display:flex;align-items:center;gap:6px;user-select:none" onclick="toggleStealth()">
+        <span id="stealthLabel">Anti-ban</span>
+        <span id="stealthDot" style="width:10px;height:10px;border-radius:50%;background:#999;display:inline-block"></span>
+      </span>
     </div>
     <div class="content">
       <div class="card">
@@ -507,6 +524,7 @@ async function fetchDashboard() {
   renderKPI(data);
   var dot = byId("topStatusDot");
   var txt = byId("topStatusText");
+  loadStealth();
   var state = (data.accounts && data.accounts.connected > 0) ? "connected" : (data.accounts && data.accounts.total > 0) ? "offline" : "starting";
   dot.className = "status-dot " + statusDot(state);
   txt.textContent = data.accounts ? (data.accounts.connected + " de " + data.accounts.total + " contas conectadas") : "Carregando...";
@@ -616,6 +634,25 @@ async function clearCompleted() {
   var d = await api("/api/queue/clear-completed", { method:"POST" });
   toast(d.message || "Limpos", "info");
   loadQueue();
+}
+
+async function toggleStealth() {
+  var cfg = await api("/api/admin/stealth");
+  var nowOn = cfg.config ? !cfg.config.enabled : true;
+  var r = await api("/api/admin/stealth", { method:"POST", body:{ enabled: nowOn } });
+  if (r.success) updateStealthUI(r.enabled);
+}
+
+function updateStealthUI(enabled) {
+  var dot = byId("stealthDot");
+  var label = byId("stealthLabel");
+  if (enabled) { dot.style.background = "#06c985"; label.textContent = "Anti-ban ON" }
+  else { dot.style.background = "#999"; label.textContent = "Anti-ban OFF" }
+}
+
+async function loadStealth() {
+  var r = await api("/api/admin/stealth");
+  if (r.success) updateStealthUI(r.config && r.config.enabled);
 }
 
 function fullRefresh() {
