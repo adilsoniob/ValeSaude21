@@ -361,13 +361,29 @@ export class WhatsAppSession {
     try {
       const fs = await import("node:fs");
       const path = await import("node:path");
-      const sessionDir = path.join(this.config.sessionFolder, `session-${this.config.clientId}-${this.index}`);
-      if (fs.existsSync(sessionDir)) {
-        for (const file of fs.readdirSync(sessionDir)) {
-          if (file.startsWith("Singleton")) {
-            const fp = path.join(sessionDir, file);
-            try { fs.unlinkSync(fp); } catch {}
+      const dirs = [
+        path.join(this.config.sessionFolder, `session-${this.config.clientId}-${this.index}`),
+        this.config.authFolder,
+      ];
+      for (const dir of dirs) {
+        if (!fs.existsSync(dir)) continue;
+        this._removeSingletonLocks(fs, path, dir);
+        for (const sub of fs.readdirSync(dir)) {
+          const subPath = path.join(dir, sub);
+          if (fs.statSync(subPath).isDirectory()) {
+            this._removeSingletonLocks(fs, path, subPath);
           }
+        }
+      }
+    } catch {}
+  }
+
+  _removeSingletonLocks(fs, path, dir) {
+    try {
+      for (const file of fs.readdirSync(dir)) {
+        if (file.startsWith("Singleton")) {
+          const fp = path.join(dir, file);
+          try { fs.unlinkSync(fp); } catch {}
         }
       }
     } catch {}
