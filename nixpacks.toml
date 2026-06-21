@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["nodejs-20_x", "chromium", "nss", "atk", "at-spi2-core", "cups", "libdrm", "libxkbcommon", "libxcomposite", "libxdamage", "libxfixes", "libxrandr", "mesa", "alsa-lib", "pango", "cairo", "libappindicator-gtk3", "nspr", "fontconfig", "liberation-fonts", "xdg-utils"]
-
-[phases.install]
-cmds = ["PUPPETEER_SKIP_DOWNLOAD=true npm ci --omit=dev --no-audit --no-fund || PUPPETEER_SKIP_DOWNLOAD=true npm install --omit=dev --no-audit --no-fund"]
-
-[start]
-cmd = "PUPPETEER_EXECUTABLE_PATH=$(find /nix/store -name 'chromium' -type f 2>/dev/null | head -1) node src/index.js"
