@@ -620,7 +620,7 @@ function doLogin() {
     if (r.success) {
       document.getElementById("loginScreen").style.display = "none";
       document.querySelector(".layout").style.display = "";
-      fetchDashboard();
+      startPolling();
     } else {
       localStorage.removeItem("wa_admin_token");
       document.getElementById("loginError").style.display = "block";
@@ -644,6 +644,7 @@ document.getElementById("loginKey").addEventListener("keydown", function(e) { if
     } else {
       document.getElementById("loginScreen").style.display = "none";
       document.querySelector(".layout").style.display = "";
+      startPolling();
     }
   });
 })();
@@ -669,10 +670,15 @@ function api(url, opts) {
   if (token) opts.headers["Authorization"] = "Bearer " + token;
   if (opts.body) { opts.body = JSON.stringify(opts.body); opts.headers["Content-Type"] = "application/json" }
   return fetch(url, opts).then(function(r) {
-    if (r.status === 401) { localStorage.removeItem("wa_admin_token"); location.reload(); return { success: false, error: "Sessao expirada" } }
+    if (r.status === 401) { localStorage.removeItem("wa_admin_token"); showLogin(); return { success: false, error: "Sessao expirada" } }
     if (!r.ok) return { success: false, error: "HTTP " + r.status };
     return r.json();
   }).catch(function(e) { return { success: false, error: String(e) } });
+}
+
+function showLogin() {
+  document.getElementById("loginScreen").style.display = "flex";
+  document.querySelector(".layout").style.display = "none";
 }
 
 function showError(msg) {
@@ -1249,18 +1255,20 @@ window.viewCampaign = async function(id) {
   alert(msg);
 };
 
-fetchDashboard();
-loadMessages();
-loadContacts();
-loadLogs();
-loadReports();
-loadQueue();
-loadWAMessages();
-loadCampaigns();
-setInterval(fetchDashboard, 5000);
-setInterval(loadQueue, 8000);
-setInterval(loadMessages, 10000);
-setInterval(loadCampaigns, 12000);
+function startPolling() {
+  fetchDashboard();
+  loadMessages();
+  loadContacts();
+  loadLogs();
+  loadReports();
+  loadQueue();
+  loadWAMessages();
+  loadCampaigns();
+  setInterval(fetchDashboard, 5000);
+  setInterval(loadQueue, 8000);
+  setInterval(loadMessages, 10000);
+  setInterval(loadCampaigns, 12000);
+}
 </script>
 </body>
 </html>`;
