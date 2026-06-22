@@ -184,34 +184,49 @@ export class WhatsAppSession {
         this._addLog("warn", "getNumberId retornou null, tentando @c.us como fallback", { to: cleanNumber });
       }
 
+      // Garante que o chat existe no Store antes de enviar (cria se necessário)
+      const chatEnsured = await withTimeout(
+        this.client.pupPage.evaluate(async (cid) => {
+          try {
+            const wid = window.require('WAWebWidFactory').createWid(cid);
+            const col = window.require('WAWebCollections');
+            let c = col.Chat.get(wid);
+            if (!c) {
+              const r = await window.require('WAWebFindChatAction').findOrCreateLatestChat(wid);
+              c = r?.chat;
+            }
+            return !!c;
+          } catch { return false; }
+        }, chatId),
+        8000,
+        "ensureChat"
+      ).catch(() => false);
+
+      if (!chatEnsured) {
+        this._addLog("warn", "Não foi possível garantir o chat no Store, tentando sendMessage mesmo assim", { to: cleanNumber });
+      }
+
       const sent = await withTimeout(
         this.client.sendMessage(chatId, message),
         this.config.sendTimeoutMs,
         "sendMessage"
       );
 
+      if (!sent) {
+        this._addLog("message_error", "sendMessage retornou nulo (chat não encontrado)", { to: cleanNumber });
+        return this._fail("SEND_ERROR", "sendMessage retornou nulo — chat não encontrado no Store do WhatsApp.", cleanNumber);
+      }
+
       this.lastSendAt = new Date().toISOString();
       this.rate.lastSend = Date.now();
       this.rate.sent.push(this.rate.lastSend);
       const messageId = sent?.id?._serialized || sent?.id || null;
 
-      // Força o store do WhatsApp Web a reconhecer o chat e sincronizar com o celular
-      setImmediate(async () => {
-        try {
-          const chat = await this.client.getChatById(chatId);
-          await this.client.getChats();
-          // Fallback via Puppeteer: força o Store interno a sincronizar o chat
-          if (chat && chat.id && chat.id._serialized) {
-            this.client.pupPage?.evaluate((serialized) => {
-              try {
-                const store = window.require('WAWebChatStore');
-                if (store && store.Chat) {
-                  store.Chat.get(serialized);
-                }
-              } catch(e) {}
-            }, chat.id._serialized).catch(() => {});
-          }
-        } catch {}
+      // Força sincronização do chat no Store
+      setImmediate(() => {
+        this.client.getChatById(chatId).then(() => {
+          this.client.getChats().catch(() => {});
+        }).catch(() => {});
       });
 
       log.info(`[${this.accountLabel}] Mensagem enviada`, { to: chatId, messageId });
