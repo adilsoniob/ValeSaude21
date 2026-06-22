@@ -195,9 +195,23 @@ export class WhatsAppSession {
       this.rate.sent.push(this.rate.lastSend);
       const messageId = sent?.id?._serialized || sent?.id || null;
 
-      // Força o store local a reconhecer o chat (resolve sumiço de conversas com números não salvos)
-      setImmediate(() => {
-        this.client.getChatById(chatId).catch(() => {});
+      // Força o store do WhatsApp Web a reconhecer o chat e sincronizar com o celular
+      setImmediate(async () => {
+        try {
+          const chat = await this.client.getChatById(chatId);
+          await this.client.getChats();
+          // Fallback via Puppeteer: força o Store interno a sincronizar o chat
+          if (chat && chat.id && chat.id._serialized) {
+            this.client.pupPage?.evaluate((serialized) => {
+              try {
+                const store = window.require('WAWebChatStore');
+                if (store && store.Chat) {
+                  store.Chat.get(serialized);
+                }
+              } catch(e) {}
+            }, chat.id._serialized).catch(() => {});
+          }
+        } catch {}
       });
 
       log.info(`[${this.accountLabel}] Mensagem enviada`, { to: chatId, messageId });
