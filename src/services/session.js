@@ -194,6 +194,12 @@ export class WhatsAppSession {
       this.rate.lastSend = Date.now();
       this.rate.sent.push(this.rate.lastSend);
       const messageId = sent?.id?._serialized || sent?.id || null;
+
+      // Força o store local a reconhecer o chat (resolve sumiço de conversas com números não salvos)
+      setImmediate(() => {
+        this.client.getChatById(chatId).catch(() => {});
+      });
+
       log.info(`[${this.accountLabel}] Mensagem enviada`, { to: chatId, messageId });
       this._addLog("message_sent", `Mensagem enviada para ${cleanNumber}`, { to: cleanNumber, messageId });
       this.emit("admin:message", { to: cleanNumber, status: "sent", account: this.index });
