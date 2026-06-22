@@ -13,6 +13,7 @@ import { createAdminRouter } from "./routes/admin.js";
 import { createQueueRouter } from "./routes/queue.js";
 import { createCampaignRouter } from "./routes/campaigns.js";
 import { createDiagnosticsRouter } from "./routes/diagnostics.js";
+import { createAdminConfigRouter } from "./routes/admin-config.js";
 import { config } from "./config.js";
 
 export function createApp(whatsapp) {
@@ -45,6 +46,9 @@ export function createApp(whatsapp) {
 
   // Campaign management API
   app.use("/api/campaigns", createCampaignRouter(authMiddleware));
+
+  // Admin config persistence (autenticada, salva em /data/admin-config.json no volume Railway)
+  app.use("/", createAdminConfigRouter(authMiddleware));
 
   // Diagnostics (autenticada)
   app.use("/api/diag", createDiagnosticsRouter(authMiddleware));

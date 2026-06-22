@@ -172,10 +172,11 @@ export function createAdminRouter(whatsapp, authMiddleware) {
 
   router.get("/api/whatsapp-messages", (_req, res) => {
     const messages = loadWAMessages().filter((m) => m.active);
-    res.json({ success: true, messages: messages.map((m) => ({ id: m.id, text: m.text })) });
+    res.json({ success: true, messages: messages.map((m) => ({ id: m.id, name: m.name || "", text: m.text })) });
   });
 
   router.post("/api/admin/whatsapp-messages", (req, res) => {
+    const name = (req.body?.name || "").trim();
     const text = (req.body?.text || "").trim();
     if (!text) return res.status(400).json({ success: false, error: "Texto obrigatório" });
     if (text.length > 1600) return res.status(400).json({ success: false, error: "Máximo 1600 caracteres" });
@@ -183,7 +184,7 @@ export function createAdminRouter(whatsapp, authMiddleware) {
     if (messages.length >= 50) return res.status(400).json({ success: false, error: "Máximo de 50 mensagens" });
     const id = getNextMsgId(messages);
     const active = req.body?.active !== false;
-    messages.push({ id, text, active, createdAt: new Date().toISOString() });
+    messages.push({ id, name, text, active, createdAt: new Date().toISOString() });
     saveWAMessages(messages);
     res.json({ success: true, message: "Mensagem criada", id });
   });
@@ -193,6 +194,7 @@ export function createAdminRouter(whatsapp, authMiddleware) {
     const messages = loadWAMessages();
     const idx = messages.findIndex((m) => m.id === id);
     if (idx === -1) return res.status(404).json({ success: false, error: "Mensagem não encontrada" });
+    if (req.body?.name !== undefined) messages[idx].name = (req.body.name || "").trim();
     if (req.body?.text !== undefined) {
       const text = req.body.text.trim();
       if (!text) return res.status(400).json({ success: false, error: "Texto obrigatório" });
